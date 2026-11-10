@@ -1,0 +1,12 @@
+.worktrees/
+.venv/
+__pycache__/
+build/
+build_*/
+dist/
+dist_*/
+releases/
+*.pyc
+exports/
+*.session.json
+*.session.csv
