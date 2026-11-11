@@ -1,0 +1,14 @@
+{
+  "name": "aw-calibrator-web-upper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild app.js --bundle --format=iife --target=chrome90 --outfile=app.bundle.js",
+    "test": "node --test tests/device_control.test.mjs tests/serial_reconnect.test.mjs tests/measurement_control.test.mjs tests/sn_code.test.mjs tests/aw_ble.test.mjs tests/bootstrap.test.mjs tests/ota_regression.test.mjs tests/ota_status.test.mjs tests/md_telemetry.test.mjs tests/capture_runs.test.mjs tests/ota_rate.test.mjs && node tests/aw_protocol.test.mjs && node tests/e2e_sim.test.mjs && node tests/aw_ota.test.mjs"
+  },
+  "description": "LEBREW 二合一水活标定网页版上位机（Web Bluetooth / Web Serial，串口·蓝牙·WiFi 三通道固件升级）",
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

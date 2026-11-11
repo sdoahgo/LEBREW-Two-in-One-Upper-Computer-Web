@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LEBREW AW 水活标定上位机</title>
+  <link rel="stylesheet" href="style.css?v=1.1.26">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>LEBREW AW <span>二合一水活标定上位机（网页版）</span></h1>
+    </div>
+    <div class="conn">
+      <label class="mock"><input type="checkbox" id="useMock"> 模拟设备</label>
+      <button id="btnBle" class="btn">连接蓝牙</button>
+      <button id="btnBlePrefix" class="btn">蓝牙前缀</button>
+      <span class="chip" id="chipBle"><i class="dot"></i>蓝牙</span>
+      <button id="btnSerial" class="btn">连接串口</button>
+      <span class="chip" id="chipSerial"><i class="dot"></i>串口</span>
+    </div>
+    <div class="meta">
+      <span id="deviceInfo">未连接</span>
+      <span class="chip" id="chipHb"><i class="dot"></i>心跳</span>
+      <label class="telemetry"><input type="checkbox" id="telemetryOn" checked> 实时流</label>
+      <span class="tabver" id="hostVersion">上位机 v1.1.26-web</span>
+    </div>
+  </header>
+
+  <div class="banner hidden" id="banner">
+    <div class="inner"><span id="bannerText"></span><span class="close" id="bannerClose">✕</span></div>
+  </div>
+
+  <main>
+    <!-- 左列：实时监控 + 曲线 -->
+    <div class="col scroll measurement-column">
+      <div class="card measurement-card">
+        <h2>设备测量 <span class="pill" id="measurePhase">未连接</span></h2>
+        <label class="measure-bean" for="measureBean">选择豆种
+          <select id="measureBean">
+            <option value="1">生豆</option><option value="0">烘焙豆</option>
+            <option value="2">带壳豆</option><option value="3">干果</option>
+          </select>
+        </label>
+        <div class="measure-actions">
+          <button id="measureMd" class="btn primary" disabled>测量水分与密度</button>
+          <button id="measureAll" class="btn measure-all" disabled>全部测量</button>
+        </div>
+        <p class="mdhint" id="measureStatus" role="status" aria-live="polite">连接设备后可选择豆种并启动测量。</p>
+        <div class="measure-result-heading"><span>本次设备测量结果</span><span id="measureElapsed">00:00</span></div>
+        <div class="measure-results">
+          <div class="live"><b id="measureMoisture">--</b><span>水分 %</span></div>
+          <div class="live"><b id="measureDensity">--</b><span>密度 g/L</span></div>
+          <div class="live"><b id="measureAwValue">--</b><span>水活 AW</span></div>
+        </div>
+        <p class="mdhint">选择豆种立即同步设备界面。测量水分与密度对应短按 KEY2；全部测量对应长按 KEY2，包含水分、密度和水活。请保持样品和密封状态。</p>
+      </div>
+      <div class="card collapsible" id="livePanel">
+        <h2 class="card-heading">实时监控<button class="btn ghost small panel-toggle" aria-expanded="true" aria-controls="livePanelBody" aria-label="收起实时监控">收起</button></h2>
+        <div class="card-body" id="livePanelBody">
+        <div class="pills">
+          <span class="pill" id="flagSensor">传感器</span>
+          <span class="pill" id="flagParams">参数有效</span>
+          <span class="pill" id="flagDew">露点校准</span>
+        </div>
+        <div class="livegrid">
+          <div class="live"><b id="liveTemp">--</b><span>温度 ℃</span></div>
+          <div class="live"><b id="liveRhRaw">--</b><span>原始 RH %</span></div>
+          <div class="live"><b id="liveRhCorr">--</b><span>修正 RH %</span></div>
+          <div class="live"><b id="liveAw">--</b><span>水活 AW</span></div>
+        </div>
+        <div class="mdheading"><h3>水分与密度</h3><span class="pill" id="liveBean">豆种：等待设备</span></div>
+        <div class="livegrid">
+          <div class="live"><b id="liveMoisture">--</b><span>实时水分 %</span></div>
+          <div class="live"><b id="liveDensity">--</b><span>实时密度 g/L</span></div>
+          <div class="live raw"><b id="liveCapRaw">--</b><span>水分原始值 · 电容 pF</span></div>
+          <div class="live raw"><b id="liveWeightRaw">--</b><span>密度原始值 · 称重 ADC</span></div>
+          <div class="live raw delta"><b id="liveDeltaCap">--</b><span>变化电容 ΔC · pF</span></div>
+          <div class="live raw"><b id="liveEmptyCap">--</b><span>本机已保存空杯电容 · pF</span></div>
+        </div>
+        <p class="mdhint" id="mdStatus">连接配套固件后显示；豆种跟随设备选择。</p>
+        <p class="mdhint">ΔC＝原始电容－本机空杯电容，为温度补偿前的变化量，保留负值。</p>
+        <button id="mdExport" class="btn ghost small" disabled>导出 ΔC 采样 CSV</button>
+        <p class="mdhint">拟合时需配对已知水分；CSV 的 reference_moisture_pct 列留空供填写。</p>
+        <p class="mdhint">水分与密度为即时计算值；本次完成结果显示在上方“设备测量”，与设备屏幕同步。</p>
+        </div>
+      </div>
+      <div class="card grow collapsible" id="chartPanel">
+        <h2 class="card-heading">实时曲线<button class="btn ghost small panel-toggle" aria-expanded="true" aria-controls="chartPanelBody" aria-label="收起实时曲线">收起</button></h2>
+        <div class="card-body chart-body" id="chartPanelBody">
+        <div class="chartbar">
+          <label>时间窗
+            <select id="chartWindow">
+              <option value="60000">1 分钟</option>
+              <option value="300000" selected>5 分钟</option>
+              <option value="1800000">30 分钟</option>
+            </select>
+          </label>
+          <button id="chartPause" class="btn ghost small">暂停</button>
+          <button id="chartExport" class="btn ghost small">导出 CSV</button>
+        </div>
+        <div class="chartwrap" style="flex:2"><canvas id="chartRh"></canvas></div>
+        <div class="chartwrap" style="flex:1"><canvas id="chartAw"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中列：采集标定 -->
+    <div class="col">
+      <div class="card grow">
+        <h2>四点采集标定
+          <span class="spacer" style="flex:1"></span>
+          <label class="telemetry"><input type="checkbox" id="autoRetry" checked> 失败自动重试</label>
+          <button id="btnCancel" class="btn danger small" disabled>取消当前采集</button>
+        </h2>
+        <div class="capture-settings">
+          <label for="requiredRuns">每点稳定采集次数
+            <select id="requiredRuns">
+              <option value="1">1 次</option>
+              <option value="2">2 次</option>
+              <option value="3" selected>3 次</option>
+            </select>
+          </label>
+          <span>四个点统一使用；已采集的稳定结果会保留。</span>
+        </div>
+        <div class="points" id="pointsGrid"></div>
+        <p style="color:var(--dim);font-size:12px">
+          稳定条件由设备判定并保持原逻辑：150 个样本、100ms 间隔、总体标准差 &lt; 0.05 %RH、最长 480s。
+          每点至少 <span id="requiredRunsHint">3</span> 次稳定采集才能写入拟合参数。顺序建议：0.328 → 0.529 → 0.753 → 水。
+        </p>
+        <h2 style="margin-top:6px">采集记录（本次连接）</h2>
+        <div class="logbox" id="runList" style="max-height:120px"></div>
+      </div>
+      <div class="card">
+        <h2>拟合与写入
+          <span class="spacer" style="flex:1"></span>
+          <button id="btnRecompute" class="btn ghost small">重算</button>
+        </h2>
+        <div id="fitArea">
+          <table class="fit" id="fitTable"></table>
+          <div class="warnbox hidden" id="fitWarning"></div>
+          <div class="calibwrap"><canvas id="calibChart"></canvas></div>
+        </div>
+        <div class="runbtns">
+          <button id="btnWrite" class="btn primary big" disabled>写入 K/B 到设备</button>
+          <button id="btnResetParams" class="btn warn" disabled>恢复 K=1 / B=0</button>
+          <button id="btnExport" class="btn ghost" disabled>导出会话 JSON/CSV</button>
+        </div>
+        <p style="color:var(--dim);font-size:12px">
+          写入后上位机自动回读校验版本与数值；K/B 变更后设备原有 0.753 露点校准自动失效，需重新执行。
+        </p>
+      </div>
+    </div>
+
+    <!-- 右列：设备 + 基准 + 升级 + 日志（内容多，列内滚动，不挤压其他列） -->
+    <div class="col scroll">
+      <div class="card">
+        <h2>设备
+          <span class="spacer" style="flex:1"></span>
+          <button id="btnReadInfo" class="btn ghost small">读信息</button>
+          <button id="btnReadParams" class="btn ghost small">读参数</button>
+        </h2>
+        <div class="kv">
+          <span>设备编号</span><b id="devId">--</b>
+          <span>固件版本</span><b id="devFw">--</b>
+          <span>参数版本</span><b id="devParamVer">--</b>
+          <span>K / B（当前）</span><b id="devKb">--</b>
+          <span>cal_dew</span><b id="devDew">--</b>
+        </div>
+      </div>
+      <div class="card" id="deviceControlsCard">
+        <h2>设备设置与校准<span class="spacer"></span><button id="deviceRead" class="btn ghost small" disabled>读取设置</button></h2>
+        <div class="device-setting-row"><label for="deviceLanguage">设备语言</label><select id="deviceLanguage" disabled><option value="0">中文</option><option value="1">English</option></select><button id="deviceApplyLanguage" class="btn small" disabled>应用</button></div>
+        <div class="device-setting-row"><label for="deviceStandby">待机时间</label><select id="deviceStandby" disabled><option value="3">3 分钟</option><option value="5">5 分钟</option><option value="10">10 分钟</option></select><button id="deviceApplyStandby" class="btn small" disabled>保存</button></div>
+        <div class="device-cal-buttons"><button id="deviceCalMd" class="btn warn" disabled>水分和密度校准</button><button id="deviceCalAw" class="btn warn" disabled>水活校准</button></div>
+        <p id="deviceControlStatus" class="mdhint" role="status" aria-live="polite">连接后读取设备语言与待机设置。</p>
+      </div>
+      <div class="card">
+        <h2>SN 写入<span class="spacer" style="flex:1"></span><button id="snRead" class="btn ghost small" disabled>读取 SN</button></h2>
+        <div class="sn-fields">
+          <label>产品代码<input value="DT01" readonly aria-label="SN 产品代码"></label>
+          <label>生产日期<input id="snDate" type="date" min="2000-01-01" max="2099-12-31"></label>
+          <label>产线<input id="snLine" value="A" maxlength="1" pattern="[A-Z]" aria-label="SN 产线"></label>
+          <label>流水号<input id="snSequence" type="number" min="1" max="9999" step="1" value="1"></label>
+        </div>
+        <div class="sn-row"><span>候选 SN</span><b id="snCandidate">--</b></div>
+        <div class="sn-row"><span>设备现有</span><b id="snExisting">未读取</b></div>
+        <button id="snWrite" class="btn primary" disabled>写入并校验 SN</button>
+        <p id="snStatus" class="sn-status" role="status" aria-live="polite">连接设备后读取 SN。</p>
+        <p class="hint">18 位：LB + DT01 + YYMMDD + 产线 + 4 位流水号 + 校验位。已有 SN 不可覆盖；同一 SN 可重复核对。设备二维码内容为完整 SN。</p>
+      </div>
+      <div class="card">
+        <h2>主基准 RH（标准盐点）<span class="spacer" style="flex:1"></span>
+          <button id="btnSaveMaster" class="btn ghost small">保存</button></h2>
+        <div class="mastergrid" id="masterGrid"></div>
+        <p style="color:var(--dim);font-size:11.5px">保存后立即重算拟合；数据存在浏览器本地。</p>
+      </div>
+      <div class="card collapsible" id="otaPanel">
+        <h2 class="card-heading">固件升级（.bin）<button class="btn ghost small panel-toggle" aria-expanded="true" aria-controls="otaPanelBody" aria-label="收起固件升级（.bin）">收起</button></h2>
+        <div class="card-body" id="otaPanelBody">
+        <div id="otaStatus" class="ota-status info" role="status" aria-live="polite">
+          <small>最近一次升级结果（刷新页面后保留）</small>
+          <strong id="otaStatusTitle">尚未开始升级</strong>
+          <p id="otaStatusDetail">选择固件并连接设备后，点击对应升级按钮。</p>
+          <div id="otaResultMeta" class="ota-result-meta"></div>
+          <button id="otaVerify" class="btn small hidden">核对升级结果</button>
+        </div>
+        <div class="upgrade-file">
+          <input type="file" id="otaFile" accept=".bin,application/octet-stream">
+        </div>
+        <div class="channels">
+          <button id="otaSerial" class="btn primary">串口升级</button>
+          <button id="otaBle" class="btn primary">蓝牙升级</button>
+          <button id="otaWifi" class="btn primary">WiFi 热点升级</button>
+        </div>
+        <div class="progresswrap">
+          <div class="progress"><i id="otaBar"></i></div>
+          <div class="progressinfo"><span id="otaPercent">0%</span><span id="otaDetail"></span></div>
+          <div class="ota-rate"><span id="otaCurrentRate">实时速度：--</span><span id="otaAverageRate">平均速度：--</span></div>
+        </div>
+        <div class="wifi-steps hidden" id="wifiSteps">
+          <ol>
+            <li>已向设备发送「进入热点模式」指令，设备正在重启为热点。</li>
+            <li>使用设备配套密码连接 WiFi 热点 <b>LEBREW-AW</b>。</li>
+            <li>连上后页面自动检测到设备并<b>自动开始上传</b>。</li>
+          </ol>
+          <div class="wifiprobe" id="wifiProbeStatus"></div>
+          <button id="wifiRetry" class="btn">重新检测并上传</button>
+          <button id="wifiCancel" class="btn">停止等待</button>
+          <p>若浏览器阻止跨地址上传，可连接热点后<a href="http://192.168.4.1/" target="_blank" rel="noopener">打开设备升级页</a>直接选择固件。</p>
+        </div>
+        <pre class="otalog" id="otaLog"></pre>
+        </div>
+      </div>
+      <div class="card logcard">
+        <div class="logbar">
+          <h2>通信日志</h2>
+          <div>
+            <button class="btn ghost small logfmt" data-ch="ble">HEX</button>
+            <button class="btn ghost small logpause" data-ch="ble">暂停</button>
+            <button class="btn ghost small logclear" data-ch="ble">清空</button>
+          </div>
+        </div>
+        <div class="logbox" id="logBle"></div>
+        <div class="logbar">
+          <h2 style="font-size:12.5px">串口通道</h2>
+          <div>
+            <button class="btn ghost small logfmt" data-ch="serial">HEX</button>
+            <button class="btn ghost small logpause" data-ch="serial">暂停</button>
+            <button class="btn ghost small logclear" data-ch="serial">清空</button>
+          </div>
+        </div>
+        <div class="logbox" id="logSerial"></div>
+      </div>
+    </div>
+  </main>
+
+  <dialog id="blePrefixDialog" aria-labelledby="blePrefixTitle" aria-describedby="blePrefixHelp">
+    <form id="blePrefixForm">
+      <h2 id="blePrefixTitle">蓝牙命令前缀</h2>
+      <p id="blePrefixHelp">输入配套上位机的 16 字节十六进制前缀。只在当前页面使用，刷新后需重新输入。</p>
+      <label for="blePrefixInput">命令前缀</label>
+      <input id="blePrefixInput" type="password" required autocomplete="off" spellcheck="false" autofocus>
+      <p id="blePrefixError" role="alert"></p>
+      <div class="dialog-actions"><button id="blePrefixCancel" type="button" class="btn">取消</button><button id="blePrefixSubmit" class="btn primary" type="submit">确认并连接</button></div>
+    </form>
+  </dialog>
+  <dialog id="deviceCalDialog" aria-labelledby="deviceCalTitle" aria-describedby="deviceCalWarning">
+    <h2 id="deviceCalTitle">校准前确认</h2>
+    <p id="deviceCalWarning"></p>
+    <p class="mdhint">确认后将更新本机对应的校准参数。校准过程中请保持设备稳定。</p>
+    <div class="dialog-actions"><button id="deviceCalDismiss" class="btn" autofocus>取消</button><button id="deviceCalConfirm" class="btn warn">确认并开始校准</button></div>
+  </dialog>
+  <script src="bootstrap.js?v=1.1.26"></script>
+</body>
+</html>
