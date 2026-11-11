@@ -6,7 +6,7 @@
 //   0x2A40 WriteNoResponse  OTA 数据包 [seq:2B BE][chunk ≤244B]
 
 import { Transport, TransportState, transportError } from './comm_link.js';
-import { AW_BLE, Command, StreamDecoder, encodeFrame, buildBleCommand } from './aw_protocol.js';
+import { AW_BLE, COMMAND_KEY, Command, StreamDecoder, encodeFrame, buildBleCommand } from './aw_protocol.js';
 
 function toBytes(value) {
   if (value instanceof Uint8Array) return value;
@@ -20,7 +20,7 @@ export class AwBleTransport extends Transport {
     this.filters = options.filters ?? [{ namePrefix: AW_BLE.namePrefix }];
     this.serviceUuid = options.serviceUuid ?? AW_BLE.serviceUuid;
     this.uuids = options.uuids ?? AW_BLE;
-    this.commandKey = options.commandKey?.slice() ?? null;
+    this.commandKey = (options.commandKey ?? COMMAND_KEY).slice();
     /** 预置设备（诊断/自动重连用）：跳过 requestDevice 选择框 */
     this.presetDevice = options.presetDevice ?? null;
     this.connectRetryCount = options.connectRetryCount ?? 2;
@@ -51,7 +51,7 @@ export class AwBleTransport extends Transport {
 
   async connect() {
     if (!(this.commandKey instanceof Uint8Array) || this.commandKey.length !== 16) {
-      throw transportError('BLE_PREFIX_REQUIRED', '请先输入 16 字节蓝牙命令前缀');
+      throw transportError('BLE_PREFIX_INVALID', '蓝牙命令前缀长度无效');
     }
     this._otaWriteWithResponse = false;
     this._disconnectPromise = null;

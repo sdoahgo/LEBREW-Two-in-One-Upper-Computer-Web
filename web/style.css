@@ -226,12 +226,8 @@ tr.sel { outline: 2px solid var(--acc); outline-offset: -2px; }
 .device-setting-row select{min-width:0;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:6px}
 .device-cal-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .device-cal-buttons .btn{flex:1;padding:7px 8px}
-#deviceCalDialog,#blePrefixDialog{margin:auto;width:min(440px,calc(100vw - 32px));padding:22px;background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:12px}
-#deviceCalDialog{border-color:var(--warn)}
-#deviceCalDialog::backdrop,#blePrefixDialog::backdrop{background:rgba(0,0,0,.65)}
-#deviceCalDialog h2,#blePrefixDialog h2{font-size:17px;margin-bottom:14px}
-#blePrefixHelp{line-height:1.6;margin-bottom:12px}
-#blePrefixInput{display:block;width:100%;margin:5px 0;padding:8px;border:1px solid var(--line);border-radius:5px;background:var(--panel2);color:var(--txt)}
-#blePrefixError{color:#ffda8a}
+#deviceCalDialog{margin:auto;width:min(440px,calc(100vw - 32px));padding:22px;background:var(--panel);color:var(--txt);border:1px solid var(--warn);border-radius:12px}
+#deviceCalDialog::backdrop{background:rgba(0,0,0,.65)}
+#deviceCalDialog h2{font-size:17px;margin-bottom:14px}
 #deviceCalWarning{line-height:1.8;white-space:pre-line;color:#ffda8a}
 .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;flex-wrap:wrap}

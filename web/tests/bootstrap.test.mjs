@@ -12,7 +12,7 @@ for (const protocol of ['file:', 'http:', 'https:']) {
       document: { createElement: () => ({}), body: { appendChild: script => { appended = script; } } },
     };
     vm.runInNewContext(source, context);
-    assert.equal(appended.type, protocol === 'file:' ? undefined : 'module');
-    assert.match(appended.src, protocol === 'file:' ? /app\.bundle\.js/ : /app\.js/);
+    assert.equal(appended.type, protocol === 'http:' ? 'module' : undefined);
+    assert.match(appended.src, protocol === 'http:' ? /app\.js\?v=1\.1\.27$/ : /app\.bundle\.js\?v=1\.1\.27$/);
   });
 }

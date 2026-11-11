@@ -668,14 +668,27 @@
     transferDataUuid: u16(10816) + "-0000-1000-8000-00805f9b34fb"
     // WriteNoResponse：OTA 数据包
   });
-  function parseBleCommandKey(text) {
-    const hex = text.replace(/0x|[\s,]/gi, "");
-    if (!/^[\da-f]{32}$/i.test(hex)) return null;
-    return Uint8Array.from(hex.match(/../g), (pair) => Number.parseInt(pair, 16));
-  }
+  var COMMAND_KEY = Uint8Array.of(
+    166,
+    195,
+    202,
+    75,
+    156,
+    28,
+    70,
+    184,
+    88,
+    233,
+    75,
+    209,
+    210,
+    165,
+    86,
+    166
+  );
   function buildBleCommand(frame, commandKey) {
     if (!(commandKey instanceof Uint8Array) || commandKey.length !== 16) {
-      throw new Error("\u8BF7\u5148\u8F93\u5165 16 \u5B57\u8282\u84DD\u7259\u547D\u4EE4\u524D\u7F00");
+      throw new Error("\u84DD\u7259\u547D\u4EE4\u524D\u7F00\u957F\u5EA6\u65E0\u6548");
     }
     const out = new Uint8Array(commandKey.length + frame.length);
     out.set(commandKey, 0);
@@ -1879,13 +1892,13 @@
   }
   var AwBleTransport = class extends Transport {
     constructor(options = {}) {
-      var _a, _b;
+      var _a;
       super(options.name ?? "BLE");
       this.bluetooth = options.bluetooth ?? ((_a = globalThis.navigator) == null ? void 0 : _a.bluetooth) ?? null;
       this.filters = options.filters ?? [{ namePrefix: AW_BLE.namePrefix }];
       this.serviceUuid = options.serviceUuid ?? AW_BLE.serviceUuid;
       this.uuids = options.uuids ?? AW_BLE;
-      this.commandKey = ((_b = options.commandKey) == null ? void 0 : _b.slice()) ?? null;
+      this.commandKey = (options.commandKey ?? COMMAND_KEY).slice();
       this.presetDevice = options.presetDevice ?? null;
       this.connectRetryCount = options.connectRetryCount ?? 2;
       this.retryDelayMs = options.retryDelayMs ?? 500;
@@ -1912,7 +1925,7 @@
     async connect() {
       var _a, _b, _c;
       if (!(this.commandKey instanceof Uint8Array) || this.commandKey.length !== 16) {
-        throw transportError("BLE_PREFIX_REQUIRED", "\u8BF7\u5148\u8F93\u5165 16 \u5B57\u8282\u84DD\u7259\u547D\u4EE4\u524D\u7F00");
+        throw transportError("BLE_PREFIX_INVALID", "\u84DD\u7259\u547D\u4EE4\u524D\u7F00\u957F\u5EA6\u65E0\u6548");
       }
       this._otaWriteWithResponse = false;
       this._disconnectPromise = null;
@@ -3435,10 +3448,8 @@
 
   // app.js
   var $ = (id) => document.getElementById(id);
-  var HOST_VERSION = "1.1.26-web";
+  var HOST_VERSION = "1.1.27-web";
   window.__awVersion = HOST_VERSION;
-  var bleCommandKey = null;
-  var connectAfterPrefix = false;
   document.getElementById("hostVersion").textContent = `\u4E0A\u4F4D\u673A v${HOST_VERSION}`;
   var MASTER_STORAGE_KEY = "aw_master_profile_v1";
   var CAPTURE_RUNS_STORAGE_KEY = "aw_required_runs_per_point_v1";
@@ -3618,7 +3629,7 @@
         state.bleTimeoutStreak = (state.bleTimeoutStreak || 0) + 1;
         if (state.bleTimeoutStreak >= 2) {
           state.bleTimeoutStreak = 0;
-          banner("\u84DD\u7259\u5DF2\u8FDE\u63A5\uFF0C\u4F46\u8BBE\u5907\u547D\u4EE4\u5E94\u7B54\u6301\u7EED\u8D85\u65F6\u3002\u8BF7\u6838\u5BF9\u84DD\u7259\u524D\u7F00\u548C\u8BBE\u5907\u56FA\u4EF6\u7248\u672C\u3002", "warn");
+          banner("\u84DD\u7259\u5DF2\u8FDE\u63A5\uFF0C\u4F46\u8BBE\u5907\u547D\u4EE4\u5E94\u7B54\u6301\u7EED\u8D85\u65F6\u3002\u8BF7\u6838\u5BF9\u8BBE\u5907\u56FA\u4EF6\u7248\u672C\u3002", "warn");
         }
       }
     });
@@ -3646,7 +3657,7 @@
         return;
       }
       if (channel === "ble") {
-        transport = new AwBleTransport({ commandKey: bleCommandKey });
+        transport = new AwBleTransport();
         transport.on("log", ({ text }) => setDeviceInfo(text));
         await transport.connect();
         state.ble = transport;
@@ -3683,7 +3694,6 @@
     const busyText = state.otaBusy ? "\u5347\u7EA7\u4E2D\u2026" : state.disconnecting ? "\u65AD\u5F00\u4E2D\u2026" : "\u8FDE\u63A5\u4E2D\u2026";
     $("useMock").disabled = busy;
     const bleOn = state.activeTransport === "ble";
-    $("btnBlePrefix").disabled = busy || bleOn;
     $("btnBle").disabled = busy;
     $("btnBle").textContent = busy ? busyText : bleOn ? "\u65AD\u5F00\u84DD\u7259" : "\u8FDE\u63A5\u84DD\u7259";
     const serialOn = state.activeTransport === "serial" || state.activeTransport === "sim";
@@ -5056,47 +5066,18 @@
     }
     refreshAll();
   });
-  async function connectBle() {
+  $("btnBle").addEventListener("click", async () => {
+    if (state.connecting || state.disconnecting || state.otaBusy) return;
+    if (state.activeTransport === "ble") {
+      disconnectAll();
+      return;
+    }
     try {
       await connect("ble");
       patchTransportLogging(state.ble, "ble");
     } catch (error) {
       setDeviceInfo("\u84DD\u7259\u8FDE\u63A5\u5931\u8D25\uFF1A" + ((error == null ? void 0 : error.message) || error.code));
     }
-  }
-  function openBlePrefixDialog(connectAfterSave) {
-    connectAfterPrefix = connectAfterSave;
-    $("blePrefixError").textContent = "";
-    $("blePrefixSubmit").textContent = connectAfterSave ? "\u786E\u8BA4\u5E76\u8FDE\u63A5" : "\u4FDD\u5B58";
-    $("blePrefixDialog").showModal();
-  }
-  $("blePrefixForm").addEventListener("submit", (event) => {
-    event.preventDefault();
-    const key = parseBleCommandKey($("blePrefixInput").value);
-    if (!key) {
-      $("blePrefixError").textContent = "\u8BF7\u8F93\u5165\u5B8C\u6574\u7684 16 \u5B57\u8282\u524D\u7F00\uFF0832 \u4E2A\u5341\u516D\u8FDB\u5236\u5B57\u7B26\uFF09\u3002";
-      return;
-    }
-    bleCommandKey = key;
-    $("blePrefixDialog").close();
-    if (connectAfterPrefix) void connectBle();
-  });
-  $("blePrefixDialog").addEventListener("close", () => {
-    $("blePrefixInput").value = "";
-  });
-  $("blePrefixCancel").addEventListener("click", () => $("blePrefixDialog").close());
-  $("btnBlePrefix").addEventListener("click", () => openBlePrefixDialog(false));
-  $("btnBle").addEventListener("click", () => {
-    if (state.connecting || state.disconnecting || state.otaBusy) return;
-    if (state.activeTransport === "ble") {
-      disconnectAll();
-      return;
-    }
-    if (!state.mock && !bleCommandKey) {
-      openBlePrefixDialog(true);
-      return;
-    }
-    void connectBle();
   });
   $("btnSerial").addEventListener("click", async () => {
     if (state.connecting || state.disconnecting || state.otaBusy) return;

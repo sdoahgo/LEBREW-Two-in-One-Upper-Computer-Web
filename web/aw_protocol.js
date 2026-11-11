@@ -531,16 +531,15 @@ export const AW_BLE = Object.freeze({
   transferDataUuid: u16(0x2a40) + '-0000-1000-8000-00805f9b34fb', // WriteNoResponse：OTA 数据包
 });
 
-export function parseBleCommandKey(text) {
-  const hex = text.replace(/0x|[\s,]/gi, '');
-  if (!/^[\da-f]{32}$/i.test(hex)) return null;
-  return Uint8Array.from(hex.match(/../g), pair => Number.parseInt(pair, 16));
-}
+export const COMMAND_KEY = Uint8Array.of(
+  0xa6, 0xc3, 0xca, 0x4b, 0x9c, 0x1c, 0x46, 0xb8,
+  0x58, 0xe9, 0x4b, 0xd1, 0xd2, 0xa5, 0x56, 0xa6,
+);
 
 /** 蓝牙命令载荷：[16B 密钥][A5 5A 完整帧]（写 0x2A38） */
 export function buildBleCommand(frame, commandKey) {
   if (!(commandKey instanceof Uint8Array) || commandKey.length !== 16) {
-    throw new Error('请先输入 16 字节蓝牙命令前缀');
+    throw new Error('蓝牙命令前缀长度无效');
   }
   const out = new Uint8Array(commandKey.length + frame.length);
   out.set(commandKey, 0);

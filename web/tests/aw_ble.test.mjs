@@ -1,20 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AwBleTransport } from '../aw_ble.js';
-import { AW_BLE, StreamDecoder, buildBleCommand, encodeFrame, Command, parseBleCommandKey } from '../aw_protocol.js';
+import { AW_BLE, COMMAND_KEY, StreamDecoder, encodeFrame, Command } from '../aw_protocol.js';
 
-const commandKey = Uint8Array.from({ length: 16 }, (_, i) => i + 1);
-
-test('command prefix accepts raw hex or copied byte literals', () => {
-  assert.deepEqual(parseBleCommandKey('0102030405060708090A0B0C0D0E0F10'), commandKey);
-  assert.deepEqual(parseBleCommandKey([...commandKey].map(n => '0x' + n.toString(16).padStart(2, '0')).join(', ')), commandKey);
-  assert.equal(parseBleCommandKey('0102'), null);
-  assert.throws(() => buildBleCommand(Uint8Array.of(0x13), null), /16 字节/);
-});
-
-test('missing prefix is rejected before opening the Bluetooth picker', async () => {
-  const transport = new AwBleTransport({ bluetooth: { requestDevice: () => assert.fail('unexpected picker') } });
-  await assert.rejects(transport.connect(), { code: 'BLE_PREFIX_REQUIRED' });
+test('an invalid override is rejected before opening the Bluetooth picker', async () => {
+  const transport = new AwBleTransport({
+    commandKey: Uint8Array.of(1),
+    bluetooth: { requestDevice: () => assert.fail('unexpected picker') },
+  });
+  await assert.rejects(transport.connect(), { code: 'BLE_PREFIX_INVALID' });
 });
 
 function fixture({ missing = [], failUuid, subscribeFails = false, serviceDisconnects = 0 } = {}) {
@@ -61,7 +55,7 @@ function fixture({ missing = [], failUuid, subscribeFails = false, serviceDiscon
     }),
     disconnect: () => { device.gatt.connected = false; device.dispatchEvent(new Event('gattserverdisconnected')); },
   };
-  const transport = new AwBleTransport({ commandKey, bluetooth: { requestDevice: async () => device }, retryDelayMs: 0, disconnectTimeoutMs: 15 });
+  const transport = new AwBleTransport({ bluetooth: { requestDevice: async () => device }, retryDelayMs: 0, disconnectTimeoutMs: 15 });
   return { transport, device, characteristics, operations };
 }
 
@@ -71,8 +65,8 @@ test('discovery, subscriptions and concurrent command/OTA writes are serialized'
   assert.equal(transport.isConnected, true);
   const frame = encodeFrame(Command.GET_INFO, 1);
   await Promise.all([transport.write(frame), transport.writeControl(Uint8Array.of(0x13)), transport.writeData(Uint8Array.of(0, 1, 2))]);
-  assert.deepEqual(characteristics.get(AW_BLE.commandUuid).writes, [Uint8Array.of(...commandKey, ...frame)]);
-  assert.deepEqual(characteristics.get(AW_BLE.transferCtrlUuid).writes, [Uint8Array.of(...commandKey, 0x13)]);
+  assert.deepEqual(characteristics.get(AW_BLE.commandUuid).writes, [Uint8Array.of(...COMMAND_KEY, ...frame)]);
+  assert.deepEqual(characteristics.get(AW_BLE.transferCtrlUuid).writes, [Uint8Array.of(...COMMAND_KEY, 0x13)]);
   assert.deepEqual(characteristics.get(AW_BLE.transferDataUuid).writes, [Uint8Array.of(0, 1, 2)]);
   await transport.disconnect();
 });
@@ -166,7 +160,7 @@ test('subscription failure cleans up partially attached listeners', async () => 
 });
 
 test('device chooser errors retain their real cause', async () => {
-  const transport = new AwBleTransport({ commandKey, bluetooth: { requestDevice: async () => {
+  const transport = new AwBleTransport({ bluetooth: { requestDevice: async () => {
     throw new DOMException('user gesture required', 'SecurityError');
   } } });
   await assert.rejects(transport.connect(), { code: 'BLE_DEVICE_REQUEST_FAILED', message: /user gesture required/ });

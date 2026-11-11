@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LEBREW AW 水活标定上位机</title>
-  <link rel="stylesheet" href="style.css?v=1.1.26">
+  <link rel="stylesheet" href="style.css?v=1.1.27">
 </head>
 <body>
   <header class="topbar">
@@ -14,7 +14,6 @@
     <div class="conn">
       <label class="mock"><input type="checkbox" id="useMock"> 模拟设备</label>
       <button id="btnBle" class="btn">连接蓝牙</button>
-      <button id="btnBlePrefix" class="btn">蓝牙前缀</button>
       <span class="chip" id="chipBle"><i class="dot"></i>蓝牙</span>
       <button id="btnSerial" class="btn">连接串口</button>
       <span class="chip" id="chipSerial"><i class="dot"></i>串口</span>
@@ -23,7 +22,7 @@
       <span id="deviceInfo">未连接</span>
       <span class="chip" id="chipHb"><i class="dot"></i>心跳</span>
       <label class="telemetry"><input type="checkbox" id="telemetryOn" checked> 实时流</label>
-      <span class="tabver" id="hostVersion">上位机 v1.1.26-web</span>
+      <span class="tabver" id="hostVersion">上位机 v1.1.27-web</span>
     </div>
   </header>
 
@@ -255,22 +254,12 @@
     </div>
   </main>
 
-  <dialog id="blePrefixDialog" aria-labelledby="blePrefixTitle" aria-describedby="blePrefixHelp">
-    <form id="blePrefixForm">
-      <h2 id="blePrefixTitle">蓝牙命令前缀</h2>
-      <p id="blePrefixHelp">输入配套上位机的 16 字节十六进制前缀。只在当前页面使用，刷新后需重新输入。</p>
-      <label for="blePrefixInput">命令前缀</label>
-      <input id="blePrefixInput" type="password" required autocomplete="off" spellcheck="false" autofocus>
-      <p id="blePrefixError" role="alert"></p>
-      <div class="dialog-actions"><button id="blePrefixCancel" type="button" class="btn">取消</button><button id="blePrefixSubmit" class="btn primary" type="submit">确认并连接</button></div>
-    </form>
-  </dialog>
   <dialog id="deviceCalDialog" aria-labelledby="deviceCalTitle" aria-describedby="deviceCalWarning">
     <h2 id="deviceCalTitle">校准前确认</h2>
     <p id="deviceCalWarning"></p>
     <p class="mdhint">确认后将更新本机对应的校准参数。校准过程中请保持设备稳定。</p>
     <div class="dialog-actions"><button id="deviceCalDismiss" class="btn" autofocus>取消</button><button id="deviceCalConfirm" class="btn warn">确认并开始校准</button></div>
   </dialog>
-  <script src="bootstrap.js?v=1.1.26"></script>
+  <script src="bootstrap.js?v=1.1.27"></script>
 </body>
 </html>

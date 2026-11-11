@@ -2,11 +2,11 @@
 
 **[在线打开二合一网页版上位机](https://sdoahgo.github.io/LEBREW-Two-in-One-Upper-Computer-Web/)** · [网页版说明](web/README.md)
 
-在电脑上用 Chrome 或 Edge 打开在线入口，可连接 USB 串口或蓝牙，也可以勾选“模拟设备”体验。首次连接蓝牙时，输入配套上位机的 16 字节命令前缀。页面刷新后需重新输入。
+在电脑上用 Chrome 或 Edge 打开在线入口。点击“连接蓝牙”或“连接串口”后，在浏览器选择设备，也可以勾选“模拟设备”体验。
 
 本项目提供 Windows 水活标定上位机、结构化串口协议、模拟设备模式和可重复构建脚本。上位机用于采集 0.328、0.529、0.753、水/1.000 四个标准点，计算两端点与四点锚定最小二乘修正，并把选定的 `K/B` 写入 ESP32-C6。
 
-网页版 `1.1.26-web` 位于 `web/`。仓库根目录包含桌面版 `v2026.10.13-r2` 的源码和 APP 协议说明，桌面版源快照为 `58c47ab`。
+网页版 `1.1.27-web` 位于 `web/`。仓库根目录包含桌面版 `v2026.10.13-r2` 的源码和 APP 协议说明，桌面版源快照为 `58c47ab`。
 
 Android / iOS 开发请直接查看下方的 [BLE 蓝牙协议（APP 对接）](#ble-蓝牙协议)。桌面程序通过串口连接设备。BLE 协议适用于 APP 与配套二合一固件直连。
 
@@ -92,7 +92,7 @@ Windows 成品通过 `build.ps1` 生成到 `releases\latest\AwCalibrator.exe`。
 | `180A`（设备信息） | `2A24` / `2A29` | Read | 型号 `TDS` / 厂商 `LEBREW`。固件版本用 `GET_INFO` 读取 |
 
 - 发现服务后先订阅 `2A37`，使用 OTA 时再订阅 `2A39`。Android 写入相应 CCCD `2902` 的 Notify 值 `01 00` 并等待完成。iOS 调用 `setNotifyValue(true, for:)` 并等待订阅回调。各次 GATT 操作顺序执行。
-- `PREFIX[16]` 是配套网页版 `aw_protocol.js` 中 `COMMAND_KEY` 的 16 个原始字节，实机联调前请向项目维护者获取。两类写入共用该前缀，按原顺序作为二进制发送。CRC 只覆盖后面的帧字段。
+- `PREFIX[16]` 是 [网页版 aw_protocol.js](web/aw_protocol.js) 中 `COMMAND_KEY` 的 16 个原始字节。两类写入共用该前缀，按原顺序作为二进制发送。CRC 只覆盖后面的帧字段。
 - 每个普通请求作为一次完整的特征写入。实际写入上限要容纳前缀和整帧，例如空请求需 26 B、SN 写入需 44 B。Android 根据实际协商 MTU 和写入方式确认容量，iOS 按写入类型查询 `maximumWriteValueLength(for:)`。如果容量不足，先解决链路写入能力。
 - 连通后先发 `GET_INFO`、`GET_PARAMS`，按需开启 `SET_STREAM`。保持连接时可每秒发一次 `HEARTBEAT`。主动断开时可发 `0x0D`，等待应答或设备断开事件，再释放 APP 的连接句柄。
 - Write With Response 的完成回调只表示 GATT 写入完成。普通命令的业务应答来自 `2A37`，OTA 控制应答来自 `2A39`。重连后重新发现/订阅、清空旧解码缓冲与待应答队列、查询设备当前状态。

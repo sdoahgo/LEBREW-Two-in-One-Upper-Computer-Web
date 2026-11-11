@@ -6,7 +6,7 @@
 import { SerialTransport } from './comm_link.js';
 import {trafficPreview} from './log_preview.js';
 import {
-  Command, DEFAULT_MASTER_RH, POINT_LABELS, encodeFrame, parseBleCommandKey,
+  Command, DEFAULT_MASTER_RH, POINT_LABELS, encodeFrame,
 } from './aw_protocol.js';
 import { CalibrationController, OPERATION_LABELS } from './aw_controller.js';
 import { AwBleTransport } from './aw_ble.js';
@@ -21,10 +21,8 @@ import {connectAuthorizedSerial} from './serial_reconnect.js';
 import {measurementActive, measurementStatusText, BEAN_NAMES} from './measurement_control.js';
 
 const $ = (id) => document.getElementById(id);
-const HOST_VERSION = '1.1.26-web';
+const HOST_VERSION = '1.1.27-web';
 window.__awVersion = HOST_VERSION;
-let bleCommandKey = null;
-let connectAfterPrefix = false;
 
 /* 顶栏版本号跟随真实版本（此前为 HTML 写死的静态文字，造成版本误导） */
 document.getElementById('hostVersion').textContent = `上位机 v${HOST_VERSION}`;
@@ -162,7 +160,7 @@ function ensureController() {
       state.bleTimeoutStreak = (state.bleTimeoutStreak || 0) + 1;
       if (state.bleTimeoutStreak >= 2) {
         state.bleTimeoutStreak = 0;
-        banner('蓝牙已连接，但设备命令应答持续超时。请核对蓝牙前缀和设备固件版本。', 'warn');
+        banner('蓝牙已连接，但设备命令应答持续超时。请核对设备固件版本。', 'warn');
       }
     }
   });
@@ -189,7 +187,7 @@ async function connect(channel, {authorizedOnly=false,expectedId=null}={}) {
       return;
     }
     if (channel === 'ble') {
-      transport = new AwBleTransport({ commandKey: bleCommandKey });
+      transport = new AwBleTransport();
       transport.on('log', ({ text }) => setDeviceInfo(text));
       await transport.connect();
       state.ble = transport;
@@ -225,7 +223,6 @@ function refreshConnectButtons() {
   const busyText = state.otaBusy ? '升级中…' : state.disconnecting ? '断开中…' : '连接中…';
   $('useMock').disabled = busy;
   const bleOn = state.activeTransport === 'ble';
-  $('btnBlePrefix').disabled = busy || bleOn;
   $('btnBle').disabled = busy;
   $('btnBle').textContent = busy ? busyText : (bleOn ? '断开蓝牙' : '连接蓝牙');
   const serialOn = state.activeTransport === 'serial' || state.activeTransport === 'sim';
@@ -1386,42 +1383,15 @@ $('requiredRuns').addEventListener('change', () => {
   refreshAll();
 });
 
-async function connectBle() {
+$('btnBle').addEventListener('click', async () => {
+  if (state.connecting || state.disconnecting || state.otaBusy) return;
+  if (state.activeTransport === 'ble') { disconnectAll(); return; }
   try {
     await connect('ble');
     patchTransportLogging(state.ble, 'ble');
   } catch (error) {
     setDeviceInfo('蓝牙连接失败：' + (error?.message || error.code));
   }
-}
-
-function openBlePrefixDialog(connectAfterSave) {
-  connectAfterPrefix = connectAfterSave;
-  $('blePrefixError').textContent = '';
-  $('blePrefixSubmit').textContent = connectAfterSave ? '确认并连接' : '保存';
-  $('blePrefixDialog').showModal();
-}
-
-$('blePrefixForm').addEventListener('submit', (event) => {
-  event.preventDefault();
-  const key = parseBleCommandKey($('blePrefixInput').value);
-  if (!key) {
-    $('blePrefixError').textContent = '请输入完整的 16 字节前缀（32 个十六进制字符）。';
-    return;
-  }
-  bleCommandKey = key;
-  $('blePrefixDialog').close();
-  if (connectAfterPrefix) void connectBle();
-});
-$('blePrefixDialog').addEventListener('close', () => { $('blePrefixInput').value = ''; });
-$('blePrefixCancel').addEventListener('click', () => $('blePrefixDialog').close());
-$('btnBlePrefix').addEventListener('click', () => openBlePrefixDialog(false));
-
-$('btnBle').addEventListener('click', () => {
-  if (state.connecting || state.disconnecting || state.otaBusy) return;
-  if (state.activeTransport === 'ble') { disconnectAll(); return; }
-  if (!state.mock && !bleCommandKey) { openBlePrefixDialog(true); return; }
-  void connectBle();
 });
 
 $('btnSerial').addEventListener('click', async () => {
